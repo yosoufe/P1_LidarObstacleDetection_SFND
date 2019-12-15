@@ -7,7 +7,6 @@
 #include "processPointClouds.h"
 // using templates for processPointClouds so also include .cpp to help linker
 #include "processPointClouds.cpp"
-#include "ransac.hpp"
 
 std::vector<Car> initHighway(bool renderScene, pcl::visualization::PCLVisualizer::Ptr &viewer)
 {
@@ -130,7 +129,7 @@ void cityBlockStream(pcl::visualization::PCLVisualizer::Ptr &viewer,
                                                                                       Eigen::Vector4f(-15, -6, -3, 1),
                                                                                       Eigen::Vector4f(20, 6.5, 3, 1));
 
-    auto segmentCloud = segmentPlane<pcl::PointXYZI>(filteredCloud, 20, 0.2);
+    auto segmentCloud = pointProcessorI->SegmentPlane(filteredCloud, 20, 0.2);
     renderPointCloud(viewer, segmentCloud.second, "Ground", Color(1, 1, 1));
     //renderPointCloud(viewer, segmentCloud.first, "Obstacles", Color(1.0, 0.0, 1.0));
 
