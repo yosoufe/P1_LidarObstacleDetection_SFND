@@ -156,47 +156,54 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
 }
 
 template <typename PointT>
-std::vector<typename pcl::PointCloud<PointT>::Ptr>
-ProcessPointClouds<PointT>::Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
-                                       float clusterTolerance,
-                                       int minSize,
-                                       int maxSize)
+void ProcessPointClouds<PointT>::proximity(size_t index,
+                                           const typename pcl::PointCloud<PointT>::Ptr cloud,
+                                           typename pcl::PointCloud<PointT>::Ptr cluster,
+                                           typename KdTree<PointT>::Ptr tree,
+                                           float distanceTol,
+                                           std::unordered_set<int> &processed_indices)
 {
+  // mark point as processed
+  processed_indices.insert(index);
+  cluster->push_back((*cloud)[index]);
+  pcl::PointIndices::Ptr nearby_indices = tree->search((*cloud)[index], distanceTol);
 
-  // Time clustering process
-  auto startTime = std::chrono::steady_clock::now();
-
-  std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
-
-  // TODO:: Fill in the function to perform euclidean clustering to group detected obstacles
-  // Creating the KdTree object for the search method of the extraction
-  typename pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
-  tree->setInputCloud(cloud);
-
-  std::vector<pcl::PointIndices> cluster_indices;
-  pcl::EuclideanClusterExtraction<PointT> ec;
-  ec.setClusterTolerance(clusterTolerance); // 2cm
-  ec.setMinClusterSize(minSize);
-  ec.setMaxClusterSize(maxSize);
-  ec.setSearchMethod(tree);
-  ec.setInputCloud(cloud);
-  ec.extract(cluster_indices);
-
-  for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+  // std::cout << "nearby indices: " << nearby_indices.size() << std::endl;
+  for (int &idx : nearby_indices->indices)
   {
-    typename pcl::PointCloud<PointT>::Ptr cloud_cluster(new pcl::PointCloud<PointT>);
-    for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-      cloud_cluster->points.push_back(cloud->points[*pit]); //*
-    cloud_cluster->width = cloud_cluster->points.size();
-    cloud_cluster->height = 1;
-    cloud_cluster->is_dense = true;
-
-    clusters.push_back(cloud_cluster);
+    // if point has not been processed
+    if (processed_indices.find(idx) == processed_indices.end())
+    {
+      proximity(idx, cloud, cluster, tree, distanceTol, processed_indices);
+    }
   }
+}
 
-  auto endTime = std::chrono::steady_clock::now();
-  auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-  std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " << clusters.size() << " clusters" << std::endl;
+template <typename PointT>
+std::vector<typename pcl::PointCloud<PointT>::Ptr>
+ProcessPointClouds<PointT>::euclideanCluster(typename pcl::PointCloud<PointT>::Ptr cloud,
+                                             float clusterTolerance,
+                                             int minSize,
+                                             int maxSize)
+{
+  typename KdTree<PointT>::Ptr tree(new KdTree<PointT>());
+  for (int i = 0; i < cloud->size(); i++)
+		tree->insert((*cloud)[i], i);
+
+  typename std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
+  std::unordered_set<int> processed_indices;
+
+  for (size_t i = 0; i < cloud->size(); i++)
+  {
+    // if point has not been processed
+    if (processed_indices.find(i) == processed_indices.end())
+    {
+      typename pcl::PointCloud<PointT>::Ptr cluster(new typename pcl::PointCloud<PointT>());
+      proximity(i, cloud, cluster, tree, clusterTolerance, processed_indices);
+      if (cluster->size() > minSize && cluster->size() < maxSize)
+        clusters.push_back(cluster);
+    }
+  }
 
   return clusters;
 }

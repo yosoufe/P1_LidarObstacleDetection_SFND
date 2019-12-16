@@ -1,7 +1,6 @@
 // PCL lib Functions for processing point clouds
 
-#ifndef PROCESSPOINTCLOUDS_H_
-#define PROCESSPOINTCLOUDS_H_
+#pragma once
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -19,6 +18,8 @@
 #include <chrono>
 #include "render/box.h"
 #include <unordered_set>
+#include "kdtree.h"
+#include <memory> // for std::shared_ptr
 
 template <typename PointT>
 class ProcessPointClouds
@@ -50,11 +51,19 @@ public:
   SegmentPlane(typename pcl::PointCloud<PointT>::Ptr cloud,
                int maxIterations, float distanceThreshold);
 
+  void
+  proximity(size_t index,
+            const typename pcl::PointCloud<PointT>::Ptr cloud,
+            typename pcl::PointCloud<PointT>::Ptr cluster,
+            typename KdTree<PointT>::Ptr tree,
+            float distanceTol,
+            std::unordered_set<int> &processed_indices);
+
   std::vector<typename pcl::PointCloud<PointT>::Ptr>
-  Clustering(typename pcl::PointCloud<PointT>::Ptr cloud,
-             float clusterTolerance,
-             int minSize,
-             int maxSize);
+  euclideanCluster(typename pcl::PointCloud<PointT>::Ptr cloud,
+                   float clusterTolerance,
+                   int minSize,
+                   int maxSize);
 
   Box BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
 
@@ -67,4 +76,3 @@ public:
   std::vector<boost::filesystem::path>
   streamPcd(std::string dataPath);
 };
-#endif /* PROCESSPOINTCLOUDS_H_ */
