@@ -168,7 +168,6 @@ void ProcessPointClouds<PointT>::proximity(size_t index,
   cluster->push_back((*cloud)[index]);
   pcl::PointIndices::Ptr nearby_indices = tree->search((*cloud)[index], distanceTol);
 
-  // std::cout << "nearby indices: " << nearby_indices.size() << std::endl;
   for (int &idx : nearby_indices->indices)
   {
     // if point has not been processed
